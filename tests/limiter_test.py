@@ -37,3 +37,18 @@ async def test_acquire():
 
     await sleep_and_retry(fn)
     logger.info(limiter)
+
+
+@pytest.mark.asyncio
+async def test_sleep_and_retry_result():
+    limiter = RateLimiter((
+        RateLimit(timedelta(seconds=1), 1),
+        RateLimit(timedelta(seconds=10), 5),
+    ))
+
+    @limiter()
+    async def fn()->str:
+        return 'hi'
+
+    greeting = await sleep_and_retry(fn)
+    assert greeting == 'hi'

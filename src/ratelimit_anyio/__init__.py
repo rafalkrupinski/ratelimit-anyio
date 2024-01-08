@@ -62,7 +62,7 @@ class RateLimiter:
         now = anyio.current_time()
         logger.debug('Now: %f', now)
         self._maybe_reset_remaining(now)
-        logger.debug("%s, %d", self._remaining.values(), cost)
+        logger.debug("%s, %d", self._remaining, cost)
         min_period, min_remaining = min(self._remaining.items(), key=lambda item: item[1].value)
 
         if min_remaining.value < cost:
@@ -85,18 +85,21 @@ class RateLimiter:
 
 
 async def sleep_and_retry(fn: Wrapped, count=1, *args, **kwargs) -> Any:
-    async def run()->bool:
+    async def run() -> tuple[bool, Any]:
         try:
-            await fn(*args, **kwargs)
-            return True
+            result = await fn(*args, **kwargs)
+            return True, result
         except CallRateError as e:
             await anyio.sleep(e.wait_time)
-            return False
+            return False, None
 
     if count:
         for _ in range(count):
-            if await run():
-                break
+            success, result = await run()
+            if success:
+                return result
     else:
-        while not run():
-            pass
+        while True:
+            success, result = await run()
+            if success:
+                return result
