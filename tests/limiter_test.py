@@ -17,22 +17,22 @@ async def test_acquire():
     ))
 
     @limiter()
-    async def fn():
-        logger.info('call')
+    async def fn(num: int):
+        logger.info('call %d', num)
 
     logger.info(limiter)
 
-    await fn()
+    await fn(100)
     logger.info(limiter)
 
     async with anyio.create_task_group() as tg:
-        for _ in range(4):
-            tg.start_soon(sleep_and_retry, fn, 4)
+        for num in range(4):
+            tg.start_soon(sleep_and_retry, fn, 5, num)
 
     logger.info(limiter)
 
     with pytest.raises(CallRateError):
-        await fn()
+        await fn(200)
     logger.info(limiter)
 
     await sleep_and_retry(fn)
